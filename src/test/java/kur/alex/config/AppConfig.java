@@ -15,6 +15,6 @@ public interface AppConfig extends Config {
     String userPassword();
     String userFirstName();
     String userLastName();
-
-
+    String newUserLogin();
+    String newUserPassword();
 }
