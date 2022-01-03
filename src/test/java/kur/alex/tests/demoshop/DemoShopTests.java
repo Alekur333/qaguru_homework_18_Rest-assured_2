@@ -1,15 +1,13 @@
 package kur.alex.tests.demoshop;
 
 import com.codeborne.selenide.Configuration;
+import com.codeborne.selenide.SelenideElement;
 import com.codeborne.selenide.logevents.SelenideLogger;
 import io.qameta.allure.selenide.AllureSelenide;
 import io.restassured.RestAssured;
 import kur.alex.config.AppConfig;
 import org.aeonbits.owner.ConfigFactory;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.openqa.selenium.Cookie;
 
 import static com.codeborne.selenide.Condition.attribute;
@@ -19,6 +17,7 @@ import static com.codeborne.selenide.Selenide.open;
 import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
 import static io.restassured.RestAssured.given;
 import static io.qameta.allure.Allure.step;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class DemoShopTests {
@@ -132,5 +131,82 @@ public class DemoShopTests {
         step("Verify Last name is proper on profile page", () ->
                 $("#LastName").shouldHave(attribute("value", webShopConfig.userLastName()))
         );
+    }
+
+
+
+    @Test
+    @Tag("API")
+    void checkWishListUnauthorizedAPI() {
+        String body = "addtocart_53.EnteredQuantity=1";
+        step("Add product to Wishlist", () -> {
+            given()
+                    .log().all()
+                    .contentType("application/x-www-form-urlencoded; charset=UTF-8")
+                    .body(body)
+                    .when()
+                    .post("addproducttocart/details/53/2")
+                    .then()
+                    .log().all()
+                    .statusCode(200)
+                    .body("updatetopwishlistsectionhtml", is("(1)"))
+                    .body("message", is("The product has been added to your <a href=\"/wishlist\">wishlist</a>"));
+        });
+    }
+
+    @Test
+    @Deprecated
+    @Tags({@Tag("API"), @Tag("UI")})
+    void checkUsersAddress() {
+//        String login = "elena@qa.guru";
+//        String password = "elena@qa.guru";
+        SelenideElement address = $(".address-list");
+
+        step("Get cookie and set it to browser by API", () -> {
+            String authorizationCookie = given()
+                    .contentType("application/x-www-form-urlencoded")
+                    .formParam("Email", webShopConfig.userLogin())
+                    .formParam("Password", webShopConfig.userPassword())
+                    .when()
+                    .post("login")
+                    .then()
+                    .statusCode(302)
+                    .extract()
+                    .cookie("NOPCOMMERCE.AUTH");
+
+            step("Open minimal content, because cookie can be set when site is opened", () ->
+                    open("Themes/DefaultClean/Content/images/logo.png"));
+
+            step("Set cookie to to browser", () ->
+                    getWebDriver().manage().addCookie(
+                            new Cookie("NOPCOMMERCE.AUTH", authorizationCookie)));
+        });
+
+        step("Open user's address", () ->
+                open("customer/addresses"));
+
+        step("Check user's address", () -> {
+
+            step("Check the address's title", () ->
+                    address.$(".title").shouldHave(text("qa-qa")));
+
+            step("Check the user's name", () ->
+                    address.$(".name").shouldHave(text(webShopConfig.userFirstName())));
+
+            step("Check the email", () ->
+                    address.$(".email").shouldHave(text("Email: " + webShopConfig.userLogin())));
+
+            step("Check the phone number", () ->
+                    address.$(".phone").shouldHave(text("Phone number: +12345")));
+
+            step("Check the address", () ->
+                    address.$(".address1").shouldHave(text("Address")));
+
+            step("Check the city, state, zip code", () ->
+                    address.$(".city-state-zip").shouldHave(text("city-state-zip")));
+
+            step("Check the country", () ->
+                    address.$(".country").shouldHave(text("country")));
+        });
     }
 }
